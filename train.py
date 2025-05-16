@@ -200,7 +200,20 @@ def prepare_output_and_logger(args):
             unique_str=os.getenv('OAR_JOB_ID')
         else:
             unique_str = str(uuid.uuid4())
-        args.model_path = os.path.join("/content/drive/MyDrive/gaussian-data/output/", unique_str[0:10])
+
+        # Scene name (from source path), resolution, sample size
+        scene_name = os.path.basename(os.path.normpath(getattr(args, "source_path", "unknown")))
+        resolution = getattr(args, "resolution", -1)
+        sample_size = getattr(args, "dataset_sample_size", -1)
+        sample_str = "FULL" if sample_size == -1 else str(sample_size)
+
+        # Depth flag (check if --depths was set)
+        depth_enabled = bool(args.depths)  # Will be "" if unset
+        depth_str = "depthON" if depth_enabled else "depthOFF"
+
+        # Final output folder name
+        run_name = f"{scene_name}_res{resolution}_samples{sample_str}_{depth_str}_{unique_str[0:10]}"
+        args.model_path = os.path.join("/content/drive/MyDrive/gaussian-data/output/", run_name)
         
     # Set up output folder
     print("Output folder: {}".format(args.model_path))
@@ -212,6 +225,16 @@ def prepare_output_and_logger(args):
     tb_writer = None
     if TENSORBOARD_FOUND:
         tb_writer = SummaryWriter(args.model_path)
+        tb_writer.add_text("Metadata/Scene", scene_name)
+        tb_writer.add_text("Metadata/Resolution", str(resolution))
+        tb_writer.add_text("Metadata/SampleSize", sample_str)
+        tb_writer.add_text("Metadata/DepthEnabled", depth_str)
+        tb_writer.add_hparams({
+            "scene": scene_name,
+            "resolution": resolution,
+            "sample_size": sample_str,
+            "depth": depth_str
+        }, {})
     else:
         print("Tensorboard not available: not logging progress")
     return tb_writer
@@ -266,11 +289,11 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=6009)
     parser.add_argument('--debug_from', type=int, default=-1)
     parser.add_argument('--detect_anomaly', action='store_true', default=False)
-    parser.add_argument("--test_iterations", nargs="+", type=int, default=[7_000, 30_000])
-    parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 30_000])
+    parser.add_argument("--test_iterations", nargs="+", type=int, default=list(range(3000, 30001, 3000)))
+    parser.add_argument("--save_iterations", nargs="+", type=int, default=[10000, 20000, 30000])
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument('--disable_viewer', action='store_true', default=False)
-    parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
+    parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[30000])
     parser.add_argument("--start_checkpoint", type=str, default = None)
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
