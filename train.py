@@ -11,6 +11,7 @@
 
 import os
 import torch
+import random
 from random import randint
 from utils.loss_utils import l1_loss, ssim
 from gaussian_renderer import render, network_gui
@@ -64,6 +65,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     depth_l1_weight = get_expon_lr_func(opt.depth_l1_weight_init, opt.depth_l1_weight_final, max_steps=opt.iterations)
 
     viewpoint_stack = scene.getTrainCameras().copy()
+    if dataset.dataset_sample_size != -1:
+        viewpoint_stack = random.sample(viewpoint_stack, k=dataset.dataset_sample_size)
     viewpoint_indices = list(range(len(viewpoint_stack)))
     ema_loss_for_log = 0.0
     ema_Ll1depth_for_log = 0.0
@@ -97,6 +100,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         # Pick a random Camera
         if not viewpoint_stack:
             viewpoint_stack = scene.getTrainCameras().copy()
+            if dataset.dataset_sample_size != -1:
+                viewpoint_stack = random.sample(viewpoint_stack, k=dataset.dataset_sample_size)
             viewpoint_indices = list(range(len(viewpoint_stack)))
         rand_idx = randint(0, len(viewpoint_indices) - 1)
         viewpoint_cam = viewpoint_stack.pop(rand_idx)
@@ -195,7 +200,7 @@ def prepare_output_and_logger(args):
             unique_str=os.getenv('OAR_JOB_ID')
         else:
             unique_str = str(uuid.uuid4())
-        args.model_path = os.path.join("./output/", unique_str[0:10])
+        args.model_path = os.path.join("/content/drive/MyDrive/gaussian-data/output/", unique_str[0:10])
         
     # Set up output folder
     print("Output folder: {}".format(args.model_path))
