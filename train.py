@@ -214,7 +214,7 @@ def prepare_output_and_logger(args):
         # Final output folder name
         run_name = f"{scene_name}_res{resolution}_samples{sample_str}_{depth_str}_{unique_str[0:10]}"
         args.model_path = os.path.join("/content/drive/MyDrive/gaussian-data/output/", run_name)
-        
+
     # Set up output folder
     print("Output folder: {}".format(args.model_path))
     os.makedirs(args.model_path, exist_ok = True)
@@ -229,12 +229,6 @@ def prepare_output_and_logger(args):
         tb_writer.add_text("Metadata/Resolution", str(resolution))
         tb_writer.add_text("Metadata/SampleSize", sample_str)
         tb_writer.add_text("Metadata/DepthEnabled", depth_str)
-        tb_writer.add_hparams({
-            "scene": scene_name,
-            "resolution": resolution,
-            "sample_size": sample_str,
-            "depth": depth_str
-        }, {})
     else:
         print("Tensorboard not available: not logging progress")
     return tb_writer
