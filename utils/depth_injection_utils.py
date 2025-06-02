@@ -40,6 +40,14 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500):
     # Initialize Gaussians at these positions
     gaussians.append_points(points_world)
 
+    gaussians.optimizer = torch.optim.Adam(
+        [
+            {'params': [gaussians._xyz, gaussians._features_dc, gaussians._features_rest,
+                        gaussians._scaling, gaussians._rotation, gaussians._opacity]}
+        ],
+        lr=gaussians.learning_rate
+    )
+
 def get_intrinsics(cam):
     W, H = cam.image_width, cam.image_height
     fx = W / (2 * math.tan(cam.FoVx * 0.5))
