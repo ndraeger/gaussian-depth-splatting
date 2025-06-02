@@ -1,4 +1,5 @@
 import torch
+import math
 
 def inject_gaussians_from_depth(cam, gaussians, num_samples=500):
     invdepthmap = cam.invdepthmap.cuda()
