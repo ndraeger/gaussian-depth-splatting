@@ -5,7 +5,7 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500):
     depthmap = 1.0 / (invdepthmap + 1e-8)
     depth_mask = cam.depth_mask.cuda()
 
-    K = cam.intrinsics.cuda()
+    K = get_intrinsics(cam)
     height, width = cam.image_height, cam.image_width
 
     u = torch.arange(0, width, device='cuda')
@@ -38,3 +38,16 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500):
     # Now points_world is (num_samples, 3)
     # Initialize Gaussians at these positions
     gaussians.append_points(points_world)
+
+def get_intrinsics(cam):
+    W, H = cam.image_width, cam.image_height
+    fx = W / (2 * math.tan(cam.FoVx * 0.5))
+    fy = H / (2 * math.tan(cam.FoVy * 0.5))
+    cx = W / 2
+    cy = H / 2
+    K = torch.tensor([
+        [fx, 0,  cx],
+        [0,  fy, cy],
+        [0,  0,   1]
+    ], device='cuda')
+    return K
