@@ -14,6 +14,7 @@ import torch
 import random
 from random import randint
 from utils.loss_utils import l1_loss, ssim
+from utils.depth_injection_utils import inject_gaussians_from_depth
 from gaussian_renderer import render, network_gui
 import sys
 from scene import Scene, GaussianModel
@@ -116,6 +117,12 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         render_pkg = render(viewpoint_cam, gaussians, pipe, bg, use_trained_exp=dataset.train_test_exp, separate_sh=SPARSE_ADAM_AVAILABLE)
         image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
 
+        # After rendering, before backward() 
+        if iteration % 500 == 0:
+            # Every 500 iterations, inject new Gaussians
+            inject_gaussians_from_depth(viewpoint_cam, gaussians)
+
+
         if viewpoint_cam.alpha_mask is not None:
             alpha_mask = viewpoint_cam.alpha_mask.cuda()
             image *= alpha_mask
@@ -131,18 +138,18 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim_value)
 
         # Depth regularization
-        Ll1depth_pure = 0.0
-        if depth_l1_weight(iteration) > 0 and viewpoint_cam.depth_reliable:
-            invDepth = render_pkg["depth"]
-            mono_invdepth = viewpoint_cam.invdepthmap.cuda()
-            depth_mask = viewpoint_cam.depth_mask.cuda()
+        # Ll1depth_pure = 0.0
+        # if depth_l1_weight(iteration) > 0 and viewpoint_cam.depth_reliable:
+        #     invDepth = render_pkg["depth"]
+        #     mono_invdepth = viewpoint_cam.invdepthmap.cuda()
+        #     depth_mask = viewpoint_cam.depth_mask.cuda()
 
-            Ll1depth_pure = torch.abs((invDepth  - mono_invdepth) * depth_mask).mean()
-            Ll1depth = depth_l1_weight(iteration) * Ll1depth_pure 
-            loss += Ll1depth
-            Ll1depth = Ll1depth.item()
-        else:
-            Ll1depth = 0
+        #     Ll1depth_pure = torch.abs((invDepth  - mono_invdepth) * depth_mask).mean()
+        #     Ll1depth = depth_l1_weight(iteration) * Ll1depth_pure 
+        #     loss += Ll1depth
+        #     Ll1depth = Ll1depth.item()
+        # else:
+        #     Ll1depth = 0
 
         loss.backward()
 
