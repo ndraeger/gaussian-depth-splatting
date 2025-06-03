@@ -216,8 +216,16 @@ def prepare_output_and_logger(args):
         depth_enabled = bool(args.depths)  # Will be "" if unset
         depth_str = "depthON" if depth_enabled else "depthOFF"
 
+        if args.depth_init:
+            init_type = "depth"
+        elif args.random_init:
+            init_type = "random"
+        else:
+            init_type = "SfM"
+        init_str = f"init{init_type}"
+
         # Final output folder name
-        run_name = f"{scene_name}_res{resolution}_samples{sample_str}_{depth_str}_{unique_str[0:10]}"
+        run_name = f"{scene_name}_res{resolution}_samples{sample_str}_{depth_str}_{init_str}_{unique_str[0:10]}"
         args.model_path = os.path.join("/content/drive/MyDrive/gaussian-data/output/", run_name)
 
     # Set up output folder

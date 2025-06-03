@@ -85,7 +85,8 @@ class Scene:
         else:
             if args.depth_init:
                 print("Performing depth initialization of Gaussians")
-                points, colors, normals = depth_map_initialization(scene_info.train_cameras, num_points=10000)
+                train_cameras = cameraList_from_camInfos(scene_info.train_cameras, 1.0, args, scene_info.is_nerf_synthetic, False)
+                points, colors, normals = depth_map_initialization(train_cameras, num_points=10000)
                 depth_pcd = BasicPointCloud(
                     points=points.cpu().numpy(),
                     colors=colors.cpu().numpy(),
