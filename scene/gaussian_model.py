@@ -431,7 +431,7 @@ class GaussianModel:
 
         print(self.tmp_radii.shape)
         print(new_tmp_radii.shape)
-        if self.tmp_radii is not None:
+        if self.tmp_radii is not None and self.tmp_radii.numel() > 0:
             self.tmp_radii = torch.cat((self.tmp_radii, new_tmp_radii))
         print(self.tmp_radii.shape)
         self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
