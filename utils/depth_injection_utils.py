@@ -85,14 +85,25 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None,
         # Add batch dim
         all_points = all_points[None, ...]  # (1, N, 3)
         all_colors = all_colors[None, ...]  # (1, N, 3)
-
-        print("adding mesh")
+        # Example:
+        faces = create_fake_faces(all_points)
+        print(all_points.shape)
         tb_writer.add_mesh(
             tag=f'gaussians_with_injection/iter_{iteration}',
             vertices=all_points,
             colors=all_colors,
+            faces=faces,
             global_step=iteration
         )
+def create_fake_faces(vertices):
+    """
+    Create a trivial face per point to allow TensorBoard to display points as degenerate triangles.
+    """
+    num_vertices = vertices.shape[0]
+    # Create trivial faces: each vertex forms a triangle with itself
+    faces = torch.arange(0, num_vertices, device=vertices.device).view(-1, 1).repeat(1, 3)
+    return faces
+
 
     # if visualize:
     #     visualize_gaussians(existing_xyz, points_world, cam=cam)
