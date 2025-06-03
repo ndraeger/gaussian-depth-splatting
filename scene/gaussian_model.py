@@ -438,9 +438,10 @@ class GaussianModel:
         self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
 
-        assert self.tmp_radii.shape[0] == self.get_xyz.shape[0], (
-            f"tmp_radii ({self.tmp_radii.shape[0]}) does not match xyz ({self.get_xyz.shape[0]})"
-        )
+        if self.tmp_radii is not None and self.tmp_radii.numel() > 0:
+            assert self.tmp_radii.shape[0] == self.get_xyz.shape[0], (
+                f"tmp_radii ({self.tmp_radii.shape[0]}) does not match xyz ({self.get_xyz.shape[0]})"
+            )
 
     def densify_and_split(self, grads, grad_threshold, scene_extent, N=2):
         n_init_points = self.get_xyz.shape[0]
