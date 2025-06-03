@@ -108,9 +108,9 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         viewpoint_cam = viewpoint_stack.pop(rand_idx)
         vind = viewpoint_indices.pop(rand_idx)
 
-        if iteration % 500 == 0:
-            # Every x iterations, inject new Gaussians
+        if dataset.depth_injection_interval > 0 and iteration % dataset.depth_injection_interval == 0:
             inject_gaussians_from_depth(viewpoint_cam, gaussians, tb_writer=tb_writer, iteration=iteration)
+
 
         # Render
         if (iteration - 1) == debug_from:
@@ -136,18 +136,18 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim_value)
 
         # Depth regularization
-        # Ll1depth_pure = 0.0
-        # if depth_l1_weight(iteration) > 0 and viewpoint_cam.depth_reliable:
-        #     invDepth = render_pkg["depth"]
-        #     mono_invdepth = viewpoint_cam.invdepthmap.cuda()
-        #     depth_mask = viewpoint_cam.depth_mask.cuda()
+        Ll1depth_pure = 0.0
+        if depth_l1_weight(iteration) > 0 and viewpoint_cam.depth_reliable:
+            invDepth = render_pkg["depth"]
+            mono_invdepth = viewpoint_cam.invdepthmap.cuda()
+            depth_mask = viewpoint_cam.depth_mask.cuda()
 
-        #     Ll1depth_pure = torch.abs((invDepth  - mono_invdepth) * depth_mask).mean()
-        #     Ll1depth = depth_l1_weight(iteration) * Ll1depth_pure 
-        #     loss += Ll1depth
-        #     Ll1depth = Ll1depth.item()
-        # else:
-        Ll1depth = 0
+            Ll1depth_pure = torch.abs((invDepth  - mono_invdepth) * depth_mask).mean()
+            Ll1depth = depth_l1_weight(iteration) * Ll1depth_pure 
+            loss += Ll1depth
+            Ll1depth = Ll1depth.item()
+        else:
+            Ll1depth = 0
 
         loss.backward()
 
@@ -217,16 +217,22 @@ def prepare_output_and_logger(args):
         depth_str = "depthON" if depth_enabled else "depthOFF"
 
         if args.depth_init:
-            init_type = "depth"
+            init_type = "DEPTH"
         elif args.random_init:
-            init_type = "random"
+            init_type = "RANDOM"
         else:
-            init_type = "SfM"
+            init_type = "SFM"
         init_str = f"init{init_type}"
 
+        if args.depth_injection_interval > 0:
+            injection_str = f"inject{args.depth_injection_interval}"
+        else:
+            injection_str = "injectOFF"
+
+
         # Final output folder name
-        run_name = f"{scene_name}_res{resolution}_samples{sample_str}_{depth_str}_{init_str}_{unique_str[0:10]}"
-        args.model_path = os.path.join("/content/drive/MyDrive/gaussian-data/output/", run_name)
+        run_name = f"{scene_name}_res{resolution}_samples{sample_str}_{depth_str}_{init_str}_{injection_str}_{unique_str[0:10]}"
+        args.model_path = os.path.join("/content/drive/MyDrive/gaussian-data/output-final/", run_name)
 
     # Set up output folder
     print("Output folder: {}".format(args.model_path))
@@ -302,6 +308,7 @@ if __name__ == "__main__":
     parser.add_argument('--disable_viewer', action='store_true', default=False)
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[30000])
     parser.add_argument("--start_checkpoint", type=str, default = None)
+    parser.add_argument("--depth_injection_interval", type=int, default=-1)
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
     
