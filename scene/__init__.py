@@ -89,8 +89,13 @@ class Scene:
                 # Uniform points in a cube [-extent, extent]
                 points = (torch.rand(num_points, 3) - 0.5) * 2 * self.cameras_extent
                 colors = torch.rand(num_points, 3)
-
-                random_pcd = BasicPointCloud(points=points.cpu().numpy(), colors=colors.cpu().numpy())
+                normals = torch.zeros_like(points)
+                
+                random_pcd = BasicPointCloud(
+                    points=points.cpu().numpy(),
+                    colors=colors.cpu().numpy(),
+                    normals=normals.cpu().numpy()
+                )
 
                 self.gaussians.create_from_pcd(random_pcd, scene_info.train_cameras, self.cameras_extent)
             else:
