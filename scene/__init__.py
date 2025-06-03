@@ -17,6 +17,8 @@ from scene.dataset_readers import sceneLoadTypeCallbacks
 from scene.gaussian_model import GaussianModel
 from arguments import ModelParams
 from utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
+import torch
+from scene.gaussian_model import BasicPointCloud
 
 class Scene:
 
@@ -80,7 +82,20 @@ class Scene:
                                                            "iteration_" + str(self.loaded_iter),
                                                            "point_cloud.ply"), args.train_test_exp)
         else:
-            self.gaussians.create_from_pcd(scene_info.point_cloud, scene_info.train_cameras, self.cameras_extent)
+            if args.random_init:
+                print("Performing random initialization of Gaussians")
+                # Create random point cloud
+                num_points = 10000
+                # Uniform points in a cube [-extent, extent]
+                points = (torch.rand(num_points, 3) - 0.5) * 2 * self.cameras_extent
+                colors = torch.rand(num_points, 3)
+
+                random_pcd = BasicPointCloud(points=points.cpu().numpy(), colors=colors.cpu().numpy())
+
+                self.gaussians.create_from_pcd(random_pcd, scene_info.train_cameras, self.cameras_extent)
+            else:
+                print("Performing SfM initialization of Gaussians")
+                self.gaussians.create_from_pcd(scene_info.point_cloud, scene_info.train_cameras, self.cameras_extent)
 
     def save(self, iteration):
         point_cloud_path = os.path.join(self.model_path, "point_cloud/iteration_{}".format(iteration))
