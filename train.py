@@ -108,7 +108,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         viewpoint_cam = viewpoint_stack.pop(rand_idx)
         vind = viewpoint_indices.pop(rand_idx)
 
-        if iteration % 100 == 0:
+        if iteration % 500 == 0:
             # Every x iterations, inject new Gaussians
             inject_gaussians_from_depth(viewpoint_cam, gaussians, tb_writer=tb_writer, iteration=iteration)
 
