@@ -60,14 +60,10 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None,
     points_cam = K_inv @ pixel_coords
     points_cam = points_cam * depth.unsqueeze(0)
 
-    print(cam.world_view_transform)
-
     # Transform to world coordinates
     world_view_transform_inv = torch.inverse(cam.world_view_transform)
     points_cam_h = torch.cat([points_cam, torch.ones(1, points_cam.shape[1], device='cuda')], dim=0)
     points_world = (world_view_transform_inv @ points_cam_h)[:3, :].T
-
-    print(points_world[:10])
 
 
     # Append to model
@@ -106,8 +102,6 @@ def plot_and_log_points_tb(tb_writer, existing_xyz, new_xyz, iteration, tag='gau
     if img.ndim == 2:  # Grayscale safeguard
         img = img.unsqueeze(-1).repeat(1, 1, 3)
     img = img.permute(2, 0, 1).unsqueeze(0).float() / 255.0  # [1, 3, H, W]
-
-    print(img.shape)
 
     # Log image
     tb_writer.add_images(tag, img, global_step=iteration)
