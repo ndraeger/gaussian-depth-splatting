@@ -124,6 +124,8 @@ class GaussianModel:
             new_tmp_radii=new_tmp_radii
         )
 
+        self.tmp_radii = torch.zeros((self.get_xyz.shape[0]), device="cuda")
+
 
     @property
     def get_scaling(self):
