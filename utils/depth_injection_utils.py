@@ -16,7 +16,11 @@ def get_intrinsics(cam):
     ], device='cuda')
     return K
 
-def inject_gaussians_from_depth(cam, gaussians, num_samples=500, visualize=False):
+def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None, iteration=None):
+
+    if tb_writer is not None:
+        existing_xyz = gaussians.get_xyz.clone()
+
     # Get intrinsics
     K = get_intrinsics(cam)
 
@@ -60,14 +64,35 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, visualize=False
     points_cam_h = torch.cat([points_cam, torch.ones(1, points_cam.shape[1], device='cuda')], dim=0)
     points_world = (world_view_transform_inv @ points_cam_h)[:3, :].T
 
-    if visualize:
-        existing_xyz = gaussians._xyz.clone()
-
     # Append to model
     gaussians.append_points(points_world)
 
-    if visualize:
-        visualize_gaussians(existing_xyz, points_world, cam=cam)
+    new_xyz = gaussians.get_xyz[len(existing_xyz):]
+
+    if tb_writer is not None and iteration is not None:
+        # Concatenate old and new points
+        all_points = torch.cat([existing_xyz, new_xyz], dim=0)
+
+        # Create colors
+        old_colors = torch.ones_like(existing_xyz) * 0.5  # Light gray (0.5, 0.5, 0.5)
+        new_colors = torch.zeros_like(new_xyz)
+        new_colors[:, 0] = 1.0  # Red (1, 0, 0)
+
+        all_colors = torch.cat([old_colors, new_colors], dim=0)
+
+        # Add batch dim
+        all_points = all_points[None, ...]  # (1, N, 3)
+        all_colors = all_colors[None, ...]  # (1, N, 3)
+
+        tb_writer.add_mesh(
+            tag=f'gaussians_with_injection/iter_{iteration}',
+            vertices=all_points,
+            colors=all_colors,
+            global_step=iteration
+        )
+
+    # if visualize:
+    #     visualize_gaussians(existing_xyz, points_world, cam=cam)
 
 def visualize_gaussians(existing_xyz, new_xyz, cam=None):
     """
