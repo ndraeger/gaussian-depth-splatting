@@ -105,3 +105,63 @@ def plot_and_log_points_tb(tb_writer, existing_xyz, new_xyz, iteration, tag='gau
 
     # Log image
     tb_writer.add_images(tag, img, global_step=iteration)
+
+
+def depth_map_initialization(train_cameras, num_points=10000, device='cuda'):
+    all_points = []
+
+    for cam in train_cameras:
+        # Get depth and mask
+        invdepthmap = cam.invdepthmap.to(device)
+        depthmap = 1.0 / (invdepthmap + 1e-8)
+        depth_mask = cam.depth_mask.to(device)
+
+        height, width = cam.image_height, cam.image_width
+        valid = depth_mask > 0
+        depth = depthmap[valid]
+        if depth.numel() == 0:
+            continue
+
+        # Pixel grid
+        u = torch.arange(0, width, device=device)
+        v = torch.arange(0, height, device=device)
+        uu, vv = torch.meshgrid(u, v, indexing='xy')
+        pixel_coords = torch.stack((uu, vv, torch.ones_like(uu)), dim=-1).float()  # (H, W, 3)
+        pixel_coords = pixel_coords.view(-1, 3)[valid.view(-1)]
+
+        # Intrinsics
+        W, H = width, height
+        fx = W / (2 * math.tan(cam.FoVx * 0.5))
+        fy = H / (2 * math.tan(cam.FoVy * 0.5))
+        cx = W / 2
+        cy = H / 2
+        K = torch.tensor([
+            [fx, 0,  cx],
+            [0,  fy, cy],
+            [0,  0,   1]
+        ], device=device)
+        K_inv = torch.inverse(K)
+
+        # Backproject
+        points_cam = (K_inv @ pixel_coords.T) * depth.unsqueeze(0)
+        points_cam_h = torch.cat([points_cam, torch.ones(1, points_cam.shape[1], device=device)], dim=0)
+
+        # To world coordinates
+        world_view_transform_inv = torch.inverse(cam.world_view_transform)
+        points_world = (world_view_transform_inv @ points_cam_h)[:3, :].T  # (N, 3)
+
+        all_points.append(points_world)
+
+    # Stack all points
+    all_points = torch.cat(all_points, dim=0)
+
+    # Random sample if too many
+    if all_points.shape[0] > num_points:
+        idx = torch.randperm(all_points.shape[0], device=device)[:num_points]
+        all_points = all_points[idx]
+
+    # Random colors and dummy normals
+    colors = torch.rand(all_points.shape[0], 3, device=device)
+    normals = torch.zeros_like(all_points)  # or random unit vectors
+
+    return all_points.cpu(), colors.cpu(), normals.cpu()

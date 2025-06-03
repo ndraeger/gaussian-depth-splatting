@@ -19,6 +19,7 @@ from arguments import ModelParams
 from utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
 import torch
 from scene.gaussian_model import BasicPointCloud
+from utils.depth_injection_utils import depth_map_initialization
 
 class Scene:
 
@@ -82,7 +83,16 @@ class Scene:
                                                            "iteration_" + str(self.loaded_iter),
                                                            "point_cloud.ply"), args.train_test_exp)
         else:
-            if args.random_init:
+            if args.depth_init:
+                print("Performing depth initialization of Gaussians")
+                points, colors, normals = depth_map_initialization(scene_info.train_cameras, num_points=10000)
+                depth_pcd = BasicPointCloud(
+                    points=points.cpu().numpy(),
+                    colors=colors.cpu().numpy(),
+                    normals=normals.cpu().numpy()
+                )
+                self.gaussians.create_from_pcd(depth_pcd, scene_info.train_cameras, self.cameras_extent)
+            elif args.random_init:
                 print("Performing random initialization of Gaussians")
                 # Create random point cloud
                 num_points = 10000
@@ -90,7 +100,7 @@ class Scene:
                 points = (torch.rand(num_points, 3) - 0.5) * 2 * self.cameras_extent
                 colors = torch.rand(num_points, 3)
                 normals = torch.zeros_like(points)
-                
+
                 random_pcd = BasicPointCloud(
                     points=points.cpu().numpy(),
                     colors=colors.cpu().numpy(),
