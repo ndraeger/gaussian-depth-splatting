@@ -90,8 +90,8 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None,
         print(all_points.shape)
         tb_writer.add_mesh(
             tag=f'gaussians_with_injection/iter_{iteration}',
-            vertices=all_points.unsqueeze(0),
-            colors=all_colors.unsqueeze(0),
+            vertices=all_points,
+            colors=all_colors,
             faces=faces.unsqueeze(0),
             global_step=iteration
         )
