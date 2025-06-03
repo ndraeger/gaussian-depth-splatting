@@ -1,5 +1,7 @@
 import torch
 import math
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 def get_intrinsics(cam):
     W, H = cam.image_width, cam.image_height
@@ -14,7 +16,7 @@ def get_intrinsics(cam):
     ], device='cuda')
     return K
 
-def inject_gaussians_from_depth(cam, gaussians, num_samples=500):
+def inject_gaussians_from_depth(cam, gaussians, num_samples=500, visualize=False):
     # Get intrinsics
     K = get_intrinsics(cam)
 
@@ -31,7 +33,7 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500):
     ones = torch.ones_like(uu)
     pixel_coords = torch.stack((uu, vv, ones), dim=-1).float()  # (H, W, 3)
 
-    pixel_coords = pixel_coords.view(-1, 3).T
+    pixel_coords = pixel_coords.view(3, -1)
     depth = depthmap.view(-1)
     mask = depth_mask.view(-1) > 0
 
@@ -58,5 +60,49 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500):
     points_cam_h = torch.cat([points_cam, torch.ones(1, points_cam.shape[1], device='cuda')], dim=0)
     points_world = (world_view_transform_inv @ points_cam_h)[:3, :].T
 
+    if visualize:
+        existing_xyz = gaussians._xyz.clone()
+
     # Append to model
     gaussians.append_points(points_world)
+
+    if visualize:
+        visualize_gaussians(existing_xyz, points_world, cam=cam)
+
+def visualize_gaussians(existing_xyz, new_xyz, cam=None):
+    """
+    Visualize existing and newly injected Gaussians.
+    
+    Args:
+        existing_xyz (torch.Tensor): (N, 3) Tensor of existing Gaussian centers.
+        new_xyz (torch.Tensor): (M, 3) Tensor of newly injected Gaussian centers.
+        cam (Camera, optional): Camera object if you want to plot camera pose.
+    """
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Existing Gaussians in gray
+    existing_xyz_np = existing_xyz.detach().cpu().numpy()
+    ax.scatter(existing_xyz_np[:, 0], existing_xyz_np[:, 1], existing_xyz_np[:, 2], 
+               c='lightgray', s=1, label='Existing Gaussians', alpha=0.5)
+
+    # Newly injected Gaussians in red
+    new_xyz_np = new_xyz.detach().cpu().numpy()
+    ax.scatter(new_xyz_np[:, 0], new_xyz_np[:, 1], new_xyz_np[:, 2], 
+               c='red', s=10, label='Newly Injected Gaussians')
+
+    # Optionally: Plot the camera center
+    if cam is not None:
+        cam_center = cam.camera_center.detach().cpu().numpy()
+        ax.scatter(cam_center[0], cam_center[1], cam_center[2], 
+                   c='blue', s=50, marker='^', label='Camera')
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('Gaussian Centers Visualization')
+    ax.legend()
+    ax.set_box_aspect([1, 1, 1])  # Equal aspect ratio
+
+    plt.show()
