@@ -124,9 +124,6 @@ class GaussianModel:
             new_tmp_radii=new_tmp_radii
         )
 
-        #self.tmp_radii = torch.zeros((self.get_xyz.shape[0]), device="cuda")
-
-
     @property
     def get_scaling(self):
         return self.scaling_activation(self._scaling)
@@ -429,19 +426,11 @@ class GaussianModel:
         self._scaling = optimizable_tensors["scaling"]
         self._rotation = optimizable_tensors["rotation"]
 
-        if self.tmp_radii is not None and self.tmp_radii.numel() > 0:
-            print(f"before: {self.tmp_radii.shape}\n")
-            print(f"new: {new_tmp_radii.shape}\n")
+        if self.tmp_radii is not None:
             self.tmp_radii = torch.cat((self.tmp_radii, new_tmp_radii))
-            print(f"after: {self.tmp_radii.shape}\n")
         self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
-
-        if self.tmp_radii is not None and self.tmp_radii.numel() > 0:
-            assert self.tmp_radii.shape[0] == self.get_xyz.shape[0], (
-                f"tmp_radii ({self.tmp_radii.shape[0]}) does not match xyz ({self.get_xyz.shape[0]})"
-            )
 
     def densify_and_split(self, grads, grad_threshold, scene_extent, N=2):
         n_init_points = self.get_xyz.shape[0]
