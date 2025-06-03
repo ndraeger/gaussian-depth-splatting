@@ -18,7 +18,7 @@ def get_intrinsics(cam):
     ], device='cuda')
     return K
 
-def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None, iteration=None):
+def inject_gaussians_from_depth(cam, gaussians, num_samples=50, tb_writer=None, iteration=None):
 
     if tb_writer is not None:
         existing_xyz = gaussians.get_xyz.clone()
