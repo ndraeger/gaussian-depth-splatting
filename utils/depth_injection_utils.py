@@ -69,6 +69,8 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None,
 
     new_xyz = gaussians.get_xyz[len(existing_xyz):]
 
+    print(tb_writer)
+    print(iteration)
     if tb_writer is not None and iteration is not None:
         # Concatenate old and new points
         all_points = torch.cat([existing_xyz, new_xyz], dim=0)
@@ -84,6 +86,7 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None,
         all_points = all_points[None, ...]  # (1, N, 3)
         all_colors = all_colors[None, ...]  # (1, N, 3)
 
+        print("adding mesh")
         tb_writer.add_mesh(
             tag=f'gaussians_with_injection/iter_{iteration}',
             vertices=all_points,
