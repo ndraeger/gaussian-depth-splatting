@@ -429,6 +429,8 @@ class GaussianModel:
         self._scaling = optimizable_tensors["scaling"]
         self._rotation = optimizable_tensors["rotation"]
 
+        print(self.tmp_radii.shape)
+        print(new_tmp_radii.shape)
         if self.tmp_radii is not None:
             self.tmp_radii = torch.cat((self.tmp_radii, new_tmp_radii))
         print(self.tmp_radii.shape)
