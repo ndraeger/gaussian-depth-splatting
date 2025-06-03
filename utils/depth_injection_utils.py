@@ -3,6 +3,7 @@ import math
 import io
 from PIL import Image
 import matplotlib.pyplot as plt
+import numpy as np
 
 def get_intrinsics(cam):
     W, H = cam.image_width, cam.image_height
@@ -78,10 +79,11 @@ def plot_and_log_points_tb(tb_writer, existing_xyz, new_xyz, iteration, tag='gau
     # Generate 4 different views
     for i, angle in enumerate(range(0, 360, 90)):  # 0°, 90°, 180°, 270°
         ax = fig.add_subplot(1, 4, i + 1, projection='3d')
-        ax.scatter(existing_xyz[:, 0].cpu(), existing_xyz[:, 1].cpu(), existing_xyz[:, 2].cpu(), 
-                   c='lightgray', s=1, alpha=0.3)
-        ax.scatter(new_xyz[:, 0].cpu(), new_xyz[:, 1].cpu(), new_xyz[:, 2].cpu(), 
-                   c='red', s=5)
+        ex = existing_xyz.detach().cpu()
+        nx = new_xyz.detach().cpu()
+
+        ax.scatter(ex[:, 0], ex[:, 1], ex[:, 2], c='lightgray', s=1, alpha=0.3)
+        ax.scatter(nx[:, 0], nx[:, 1], nx[:, 2], c='red', s=5)
         ax.view_init(elev=20, azim=angle)
         ax.set_title(f'View {angle}°')
         ax.set_axis_off()  # Remove axis for cleaner look
