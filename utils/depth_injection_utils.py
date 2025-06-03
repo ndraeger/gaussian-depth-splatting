@@ -103,5 +103,7 @@ def plot_and_log_points_tb(tb_writer, existing_xyz, new_xyz, iteration, tag='gau
         img = img.unsqueeze(-1).repeat(1, 1, 3)
     img = img.permute(2, 0, 1).unsqueeze(0).float() / 255.0  # [1, 3, H, W]
 
+    print(img.shape)
+
     # Log image
     tb_writer.add_images(tag, img, global_step=iteration)
