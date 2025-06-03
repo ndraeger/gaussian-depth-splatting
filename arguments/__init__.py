@@ -59,6 +59,7 @@ class ModelParams(ParamGroup):
         self.dataset_sample_size = -1
         self.random_init = False
         self.depth_init = False
+        self.depth_injection_interval = -1  # Default -1 = OFF
         super().__init__(parser, "Loading Parameters", sentinel)
 
     def extract(self, args):
