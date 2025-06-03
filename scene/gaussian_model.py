@@ -103,40 +103,25 @@ class GaussianModel:
         num_new = new_points_world.shape[0]
 
         # Create new Gaussian attributes
-        new_sh_features = torch.randn((num_new, (self.max_sh_degree + 1)**2, 3), device='cuda') * 0.01
+        new_sh_features = torch.randn(
+            (num_new, (self.max_sh_degree + 1)**2, 3), device='cuda'
+        ) * 0.01
         new_scales = torch.ones((num_new, 3), device='cuda') * 0.01
         new_rotations = torch.zeros((num_new, 4), device='cuda')
         new_rotations[:, 0] = 1  # Identity quaternion
         new_opacities = torch.ones((num_new, 1), device='cuda') * 0.05
+        new_tmp_radii = torch.zeros((num_new,), device='cuda')
 
-        # Package new tensors into dictionary
-        new_tensors = {
-            "xyz": new_points_world.detach(),
-            "f_dc": new_sh_features[:, 0:1, :],
-            "f_rest": new_sh_features[:, 1:, :],
-            "opacity": new_opacities,
-            "scaling": new_scales,
-            "rotation": new_rotations
-        }
-
-        # Extend optimizer tensors
-        optimizable_tensors = self.cat_tensors_to_optimizer(new_tensors)
-
-        # Update model's tensor references
-        self._xyz = optimizable_tensors["xyz"]
-        self._features_dc = optimizable_tensors["f_dc"]
-        self._features_rest = optimizable_tensors["f_rest"]
-        self._opacity = optimizable_tensors["opacity"]
-        self._scaling = optimizable_tensors["scaling"]
-        self._rotation = optimizable_tensors["rotation"]
-
-        # Reset accumulators to match new size
-        N = self.get_xyz.shape[0]
-        self.xyz_gradient_accum = torch.zeros((N, 1), device="cuda")
-        self.denom = torch.zeros((N, 1), device="cuda")
-        self.max_radii2D = torch.zeros((N,), device="cuda")
-        self.tmp_radii = torch.zeros((N,), device="cuda")
-
+        # Call densification_postfix to add the new points
+        self.densification_postfix(
+            new_xyz=new_points_world, 
+            new_features_dc=new_sh_features[:, 0:1, :],
+            new_features_rest=new_sh_features[:, 1:, :],
+            new_opacities=new_opacities,
+            new_scaling=new_scales,
+            new_rotation=new_rotations,
+            new_tmp_radii=new_tmp_radii
+        )
 
 
     @property
