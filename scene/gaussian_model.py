@@ -119,10 +119,10 @@ class GaussianModel:
             "rotation": new_rotations
         }
 
-        # Use the model's existing method to extend and update optimizer state
+        # Extend optimizer tensors
         optimizable_tensors = self.cat_tensors_to_optimizer(new_tensors)
 
-        # Update the model's references to the optimizer parameters
+        # Update model's tensor references
         self._xyz = optimizable_tensors["xyz"]
         self._features_dc = optimizable_tensors["f_dc"]
         self._features_rest = optimizable_tensors["f_rest"]
@@ -130,10 +130,13 @@ class GaussianModel:
         self._scaling = optimizable_tensors["scaling"]
         self._rotation = optimizable_tensors["rotation"]
 
-        # (Optional) update gradient accumulators if needed
-        self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
-        self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
-        self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
+        # Reset accumulators to match new size
+        N = self.get_xyz.shape[0]
+        self.xyz_gradient_accum = torch.zeros((N, 1), device="cuda")
+        self.denom = torch.zeros((N, 1), device="cuda")
+        self.max_radii2D = torch.zeros((N,), device="cuda")
+        self.tmp_radii = torch.zeros((N,), device="cuda")
+
 
 
     @property
