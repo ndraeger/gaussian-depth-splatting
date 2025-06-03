@@ -431,6 +431,7 @@ class GaussianModel:
             self.tmp_radii = torch.empty(0, device="cuda")
 
         self.tmp_radii = torch.cat((self.tmp_radii, new_tmp_radii))
+        print(self.tmp_radii.shape)
         self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
