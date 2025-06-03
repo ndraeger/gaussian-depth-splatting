@@ -110,7 +110,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
         if iteration % 500 == 0:
             # Every 500 iterations, inject new Gaussians
-            inject_gaussians_from_depth(viewpoint_cam, gaussians, visualize=True)
+            inject_gaussians_from_depth(viewpoint_cam, gaussians, tb_writer=tb_writer, iteration=iteration)
 
         # Render
         if (iteration - 1) == debug_from:
