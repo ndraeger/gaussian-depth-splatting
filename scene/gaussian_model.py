@@ -111,7 +111,7 @@ class GaussianModel:
         new_rotations = torch.zeros((num_new, 4), device='cuda')
         new_rotations[:, 0] = 1  # Identity quaternion
         new_opacities = torch.ones((num_new, 1), device='cuda') * 0.05
-        new_tmp_radii = torch.zeros((num_new,), device='cuda')
+        new_tmp_radii = torch.zeros((0,), device='cuda')
 
         # Call densification_postfix to add the new points
         self.densification_postfix(
