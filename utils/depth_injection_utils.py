@@ -35,11 +35,10 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None,
     # Pixel grid
     u = torch.arange(0, width, device='cuda')
     v = torch.arange(0, height, device='cuda')
-    uu, vv = torch.meshgrid(u, v, indexing='xy')
-    ones = torch.ones_like(uu)
-    pixel_coords = torch.stack((uu, vv, ones), dim=-1).float()  # (H, W, 3)
+    uu, vv = torch.meshgrid(v, u, indexing='ij')
+    pixel_coords = torch.stack((uu, vv, torch.ones_like(uu)), dim=-1).float()  # (H, W, 3)
+    pixel_coords = pixel_coords.view(-1, 3).T
 
-    pixel_coords = pixel_coords.view(3, -1)
     depth = depthmap.view(-1)
     mask = depth_mask.view(-1) > 0
 
@@ -61,10 +60,15 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None,
     points_cam = K_inv @ pixel_coords
     points_cam = points_cam * depth.unsqueeze(0)
 
+    print(cam.world_view_transform)
+
     # Transform to world coordinates
     world_view_transform_inv = torch.inverse(cam.world_view_transform)
     points_cam_h = torch.cat([points_cam, torch.ones(1, points_cam.shape[1], device='cuda')], dim=0)
     points_world = (world_view_transform_inv @ points_cam_h)[:3, :].T
+
+    print(points_world[:10])
+
 
     # Append to model
     gaussians.append_points(points_world)
