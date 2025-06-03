@@ -100,24 +100,41 @@ class GaussianModel:
         self.optimizer.load_state_dict(opt_dict)
 
     def append_points(self, new_points_world):
-        # Expand position buffer
-        self._xyz = torch.cat([self._xyz, new_points_world.detach()], dim=0)
-
-        # Expand SH features (initialize randomly, for example)
         num_new = new_points_world.shape[0]
-        new_sh_features = torch.randn((num_new, (self.max_sh_degree + 1)**2, 3), device='cuda') * 0.01
-        self._features_dc = torch.cat([self._features_dc, new_sh_features[:, 0:1, :]], dim=0)
-        self._features_rest = torch.cat([self._features_rest, new_sh_features[:, 1:, :]], dim=0)
 
-        # Expand scales, rotations, opacities
+        # Create new Gaussian attributes
+        new_sh_features = torch.randn((num_new, (self.max_sh_degree + 1)**2, 3), device='cuda') * 0.01
         new_scales = torch.ones((num_new, 3), device='cuda') * 0.01
         new_rotations = torch.zeros((num_new, 4), device='cuda')
         new_rotations[:, 0] = 1  # Identity quaternion
         new_opacities = torch.ones((num_new, 1), device='cuda') * 0.05
 
-        self._scaling = torch.cat([self._scaling, new_scales], dim=0)
-        self._rotation = torch.cat([self._rotation, new_rotations], dim=0)
-        self._opacity = torch.cat([self._opacity, new_opacities], dim=0)
+        # Package new tensors into dictionary
+        new_tensors = {
+            "xyz": new_points_world.detach(),
+            "f_dc": new_sh_features[:, 0:1, :],
+            "f_rest": new_sh_features[:, 1:, :],
+            "opacity": new_opacities,
+            "scaling": new_scales,
+            "rotation": new_rotations
+        }
+
+        # Use the model's existing method to extend and update optimizer state
+        optimizable_tensors = self.cat_tensors_to_optimizer(new_tensors)
+
+        # Update the model's references to the optimizer parameters
+        self._xyz = optimizable_tensors["xyz"]
+        self._features_dc = optimizable_tensors["f_dc"]
+        self._features_rest = optimizable_tensors["f_rest"]
+        self._opacity = optimizable_tensors["opacity"]
+        self._scaling = optimizable_tensors["scaling"]
+        self._rotation = optimizable_tensors["rotation"]
+
+        # (Optional) update gradient accumulators if needed
+        self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
+        self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
+        self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
+
 
     @property
     def get_scaling(self):
