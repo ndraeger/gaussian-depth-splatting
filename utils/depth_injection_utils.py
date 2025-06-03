@@ -1,7 +1,8 @@
 import torch
 import math
+import io
+from PIL import Image
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 def get_intrinsics(cam):
     W, H = cam.image_width, cam.image_height
@@ -67,81 +68,38 @@ def inject_gaussians_from_depth(cam, gaussians, num_samples=500, tb_writer=None,
     # Append to model
     gaussians.append_points(points_world)
 
-    new_xyz = gaussians.get_xyz[len(existing_xyz):]
+    new_xyz = points_world.clone()
+    plot_and_log_points_tb(tb_writer, existing_xyz, new_xyz, iteration)
 
-    print(tb_writer)
-    print(iteration)
-    if tb_writer is not None and iteration is not None:
-        # Concatenate old and new points
-        all_points = torch.cat([existing_xyz, new_xyz], dim=0)
-
-        # Create colors
-        old_colors = torch.ones_like(existing_xyz) * 0.5  # Light gray (0.5, 0.5, 0.5)
-        new_colors = torch.zeros_like(new_xyz)
-        new_colors[:, 0] = 1.0  # Red (1, 0, 0)
-
-        all_colors = torch.cat([old_colors, new_colors], dim=0)
-
-        # Add batch dim
-        all_points = all_points[None, ...]  # (1, N, 3)
-        all_colors = all_colors[None, ...]  # (1, N, 3)
-        # Example:
-        faces = create_fake_faces(all_points)
-        print(all_points.shape)
-        tb_writer.add_mesh(
-            tag=f'gaussians_with_injection/iter_{iteration}',
-            vertices=all_points,
-            colors=all_colors,
-            faces=faces.unsqueeze(0),
-            global_step=iteration
-        )
-def create_fake_faces(vertices):
-    """
-    Create a trivial face per point to allow TensorBoard to display points as degenerate triangles.
-    """
-    num_vertices = vertices.shape[0]
-    # Create trivial faces: each vertex forms a triangle with itself
-    faces = torch.arange(0, num_vertices, device=vertices.device).view(-1, 1).repeat(1, 3)
-    return faces
-
-
-    # if visualize:
-    #     visualize_gaussians(existing_xyz, points_world, cam=cam)
-
-def visualize_gaussians(existing_xyz, new_xyz, cam=None):
-    """
-    Visualize existing and newly injected Gaussians.
+def plot_and_log_points_tb(tb_writer, existing_xyz, new_xyz, iteration, tag='gaussian_injection'):
+    # Create figure
+    fig = plt.figure(figsize=(20, 5))
     
-    Args:
-        existing_xyz (torch.Tensor): (N, 3) Tensor of existing Gaussian centers.
-        new_xyz (torch.Tensor): (M, 3) Tensor of newly injected Gaussian centers.
-        cam (Camera, optional): Camera object if you want to plot camera pose.
-    """
+    # Generate 4 different views
+    for i, angle in enumerate(range(0, 360, 90)):  # 0°, 90°, 180°, 270°
+        ax = fig.add_subplot(1, 4, i + 1, projection='3d')
+        ax.scatter(existing_xyz[:, 0].cpu(), existing_xyz[:, 1].cpu(), existing_xyz[:, 2].cpu(), 
+                   c='lightgray', s=1, alpha=0.3)
+        ax.scatter(new_xyz[:, 0].cpu(), new_xyz[:, 1].cpu(), new_xyz[:, 2].cpu(), 
+                   c='red', s=5)
+        ax.view_init(elev=20, azim=angle)
+        ax.set_title(f'View {angle}°')
+        ax.set_axis_off()  # Remove axis for cleaner look
+        ax.set_box_aspect([1, 1, 1])
 
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    # Save to buffer
+    buf = io.BytesIO()
+    plt.tight_layout()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    plt.close(fig)
 
-    # Existing Gaussians in gray
-    existing_xyz_np = existing_xyz.detach().cpu().numpy()
-    ax.scatter(existing_xyz_np[:, 0], existing_xyz_np[:, 1], existing_xyz_np[:, 2], 
-               c='lightgray', s=1, label='Existing Gaussians', alpha=0.5)
+    # Read into PIL and convert to tensor
+    img = Image.open(buf)
+    img = torch.tensor(np.array(img))
+    if img.ndim == 2:  # Grayscale safeguard
+        img = img.unsqueeze(-1).repeat(1, 1, 3)
+    img = img.permute(2, 0, 1).unsqueeze(0).float() / 255.0  # [1, 3, H, W]
 
-    # Newly injected Gaussians in red
-    new_xyz_np = new_xyz.detach().cpu().numpy()
-    ax.scatter(new_xyz_np[:, 0], new_xyz_np[:, 1], new_xyz_np[:, 2], 
-               c='red', s=10, label='Newly Injected Gaussians')
-
-    # Optionally: Plot the camera center
-    if cam is not None:
-        cam_center = cam.camera_center.detach().cpu().numpy()
-        ax.scatter(cam_center[0], cam_center[1], cam_center[2], 
-                   c='blue', s=50, marker='^', label='Camera')
-
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('Gaussian Centers Visualization')
-    ax.legend()
-    ax.set_box_aspect([1, 1, 1])  # Equal aspect ratio
-
-    plt.show()
+    # Log image
+    tb_writer.add_images(tag, img, global_step=iteration)
