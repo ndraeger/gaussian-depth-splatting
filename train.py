@@ -108,6 +108,10 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         viewpoint_cam = viewpoint_stack.pop(rand_idx)
         vind = viewpoint_indices.pop(rand_idx)
 
+        if iteration % 500 == 0:
+            # Every 500 iterations, inject new Gaussians
+            inject_gaussians_from_depth(viewpoint_cam, gaussians, visualize=True)
+
         # Render
         if (iteration - 1) == debug_from:
             pipe.debug = True
@@ -116,12 +120,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
         render_pkg = render(viewpoint_cam, gaussians, pipe, bg, use_trained_exp=dataset.train_test_exp, separate_sh=SPARSE_ADAM_AVAILABLE)
         image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
-
-        # After rendering, before backward() 
-        if iteration % 500 == 0:
-            # Every 500 iterations, inject new Gaussians
-            inject_gaussians_from_depth(viewpoint_cam, gaussians, visualize=True)
-
 
         if viewpoint_cam.alpha_mask is not None:
             alpha_mask = viewpoint_cam.alpha_mask.cuda()

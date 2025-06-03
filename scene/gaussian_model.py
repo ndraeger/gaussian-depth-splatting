@@ -60,7 +60,6 @@ class GaussianModel:
         self.max_radii2D = torch.empty(0)
         self.xyz_gradient_accum = torch.empty(0)
         self.denom = torch.empty(0)
-        self.tmp_radii = torch.empty(0, device="cuda")
         self.optimizer = None
         self.percent_dense = 0
         self.spatial_lr_scale = 0
