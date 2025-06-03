@@ -97,11 +97,10 @@ def plot_and_log_points_tb(tb_writer, existing_xyz, new_xyz, iteration, tag='gau
     plt.close(fig)
 
     # Read into PIL and convert to tensor
-    img = Image.open(buf)
+    img = Image.open(buf).convert('RGB')
     img = torch.tensor(np.array(img))
     if img.ndim == 2:  # Grayscale safeguard
         img = img.unsqueeze(-1).repeat(1, 1, 3)
-    img = Image.open(buf).convert('RGB')
     img = img.permute(2, 0, 1).unsqueeze(0).float() / 255.0  # [1, 3, H, W]
 
     print(img.shape)
